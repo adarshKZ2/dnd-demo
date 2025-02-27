@@ -133,7 +133,7 @@ function App() {
       </div>
 
       <div
-        className="grid-stack bg-slate-100 p-4 rounded-lg border border-gray-200 shadow-md h-[500px] w-full"
+        className="grid-stack bg-slate-100 p-4 rounded-lg border border-gray-200 shadow-md min-h-[500px] w-full"
         ref={gridRef}
       />
     </div>

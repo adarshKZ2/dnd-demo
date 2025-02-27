@@ -124,15 +124,7 @@
 }
 
 @layer components {
-  .grid-stack {
-    @apply bg-slate-100 p-4 rounded-lg border border-gray-200 shadow-md min-h-[500px] w-full;
-  }
-
-  .grid-stack-item {
-    @apply bg-white shadow-sm rounded border border-gray-200;
-  }
-
   .grid-stack-item-content {
-    @apply p-3 text-sm font-medium;
+    @apply p-3 text-sm font-medium m-4 border shadow-sm rounded-lg border-gray-200;
   }
 }
