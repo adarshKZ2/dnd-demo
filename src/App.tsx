@@ -25,11 +25,10 @@ function App() {
         {
           // Basic configuration
           column: 12,
-          cellHeight: 80,
+          // cellHeight: 80,
           margin: 10,
           // Allow dragging and resizing for better testing
           disableResize: false,
-          disableDrag: false,
           alwaysShowResizeHandle: true,
         },
         gridRef.current
