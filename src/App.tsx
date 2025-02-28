@@ -1,143 +1,74 @@
-import { useEffect, useRef, useState } from "react";
-import { GridStack, GridStackNode } from "gridstack";
-import { createRoot, Root } from "react-dom/client";
-import { ReactNode } from "react";
+import React, { useEffect, useRef } from "react";
+import { createRoot } from "react-dom/client"; // For React 18+
+import { GridStack } from "gridstack";
 import "gridstack/dist/gridstack.min.css";
-import "./App.css";
-import ChartWidget from "./ChartWidget";
 
-// Fixed function to properly handle content and resizing
-function addReactWidget(
-  grid: GridStack,
-  component: ReactNode,
-  options: Partial<GridStackNode> = {}
-) {
-  // First create a generic widget
-  const generatedWidget = grid.addWidget({
-    x: options.x || 0,
-    y: options.y || 0,
-    w: options.w || 4,
-    h: options.h || 2,
-    // Plain string for content
-    content: "",
-    // Ensure it's resizable
-    noResize: false,
-  });
-
-  // Get the content container where we'll render React
-  const contentElement = generatedWidget.querySelector(
-    ".grid-stack-item-content"
+// React Widget Component
+const Widget = ({ id }: { id: number }) => {
+  return (
+    <div className="grid-stack-item-content">
+      <h3>Widget {id}</h3>
+      <p>Resizable & Draggable</p>
+    </div>
   );
-  if (!contentElement) return { widget: generatedWidget, root: null };
+};
 
-  // Create React container inside
-  const reactContainer = document.createElement("div");
-  reactContainer.className = "w-full h-full";
-  contentElement.appendChild(reactContainer);
+const GridStackComponent: React.FC = () => {
+  const gridRef = useRef<GridStack | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const widgetsRef = useRef<number[]>([]); // Stores widget IDs without triggering re-renders
 
-  // Render React component
-  const root = createRoot(reactContainer);
-  root.render(component);
-
-  return { widget: generatedWidget, root };
-}
-
-function App() {
-  const gridRef = useRef<HTMLDivElement>(null);
-  const [gridInitialized, setGridInitialized] = useState(false);
-  const gridInstanceRef = useRef<GridStack | null>(null);
-
-  // Keep track of React roots for cleanup
-  const reactRootsRef = useRef<Root[]>([]);
-
-  // Function to add a new React widget on button click
-  const handleAddChartWidget = () => {
-    if (gridInstanceRef.current) {
-      const { root } = addReactWidget(
-        gridInstanceRef.current,
-        <ChartWidget />,
-        { x: 0, y: 4, w: 4, h: 2 }
-      );
-
-      // Only store non-null roots
-      if (root) {
-        reactRootsRef.current.push(root);
-      }
-    }
-  };
-
+  // Initialize GridStack once
   useEffect(() => {
-    if (!gridRef.current || gridInitialized) return;
-
-    try {
-      console.log("Initializing GridStack");
-
-      const grid = GridStack.init(
+    if (containerRef.current) {
+      gridRef.current = GridStack.init(
         {
           column: 12,
-          margin: 10,
           disableResize: false,
           alwaysShowResizeHandle: true,
         },
-        gridRef.current
+        containerRef.current
       );
-
-      console.log("Grid initialized:", grid);
-
-      // Add only regular widgets
-      grid.addWidget({ x: 0, y: 0, w: 4, h: 2, content: "Widget 1" });
-      grid.addWidget({ x: 4, y: 0, w: 4, h: 2, content: "Widget 2" });
-      grid.addWidget({ x: 8, y: 0, w: 4, h: 2, content: "Widget 3" });
-
-      // No React component widget added here anymore - only when button is clicked
-
-      gridInstanceRef.current = grid;
-      setGridInitialized(true);
-    } catch (error) {
-      console.error("Error initializing GridStack:", error);
     }
+  }, []);
 
-    return () => {
-      reactRootsRef.current.forEach((root) => {
-        try {
-          root.unmount();
-        } catch (e) {
-          console.error("Error unmounting React root:", e);
-        }
-      });
+  // Function to add a new React widget
+  const addWidget = () => {
+    const newId = Date.now();
+    widgetsRef.current.push(newId); // Store widget ID
 
-      if (gridInitialized && gridInstanceRef.current) {
-        console.log("Destroying GridStack");
-        try {
-          gridInstanceRef.current.destroy();
-        } catch (e) {
-          console.error("Error destroying grid:", e);
-        }
-      }
-    };
-  }, [gridInitialized]);
+    // Create a new widget div
+    const newDiv = document.createElement("div");
+    newDiv.id = `widget-${newId}`;
+    newDiv.className = "grid-stack-item"; // Important for GridStack
+    newDiv.setAttribute("gs-w", "4"); // Not data-gs-width
+    newDiv.setAttribute("gs-h", "4"); // Not data-gs-height
+    // newDiv.setAttribute("gs-auto-position", "true"); // Auto-place the widget
+
+    // Create inner div required by GridStack
+    const innerDiv = document.createElement("div");
+    innerDiv.className = "grid-stack-item-content";
+    newDiv.appendChild(innerDiv);
+
+    containerRef.current!.appendChild(newDiv); // Add to GridStack container
+
+    // Mount React component inside the new widget
+    const root = createRoot(innerDiv); // React 18
+    root.render(<Widget id={newId} />);
+
+    // Convert it into a GridStack widget (makes it draggable & resizable)
+    gridRef.current!.makeWidget(newDiv);
+  };
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-xl font-bold mb-4">
-        GridStack with React Components
-      </h1>
-
-      <div className="mb-4">
-        <button
-          onClick={handleAddChartWidget}
-          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-700 transition-colors"
-        >
-          Add Chart Widget
-        </button>
-      </div>
-
+    <div>
+      <button onClick={addWidget}>Add Widget</button>
       <div
+        ref={containerRef}
         className="grid-stack bg-slate-100 p-4 rounded-lg border border-gray-200 shadow-md min-h-[500px] w-full"
-        ref={gridRef}
-      />
+      ></div>
     </div>
   );
-}
+};
 
-export default App;
+export default GridStackComponent;
