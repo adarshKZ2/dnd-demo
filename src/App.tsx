@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { createRoot } from "react-dom/client"; // For React 18+
+import { createRoot, Root } from "react-dom/client"; // For React 18+
 import { GridStack } from "gridstack";
 import "gridstack/dist/gridstack.min.css";
 
@@ -27,6 +27,8 @@ const GridStackComponent: React.FC = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   // Track widgets with their DOM elements
   const widgetsRef = useRef<Map<number, HTMLElement>>(new Map());
+  // Add a ref to track React roots
+  const rootsRef = useRef<Map<number, Root>>(new Map());
 
   // Initialize GridStack once
   useEffect(() => {
@@ -69,8 +71,18 @@ const GridStackComponent: React.FC = () => {
                     // Clear existing content
                     contentContainer.innerHTML = "";
 
-                    // Create React component
-                    const root = createRoot(contentContainer);
+                    // Check if we already have a root for this container
+                    let root;
+                    if (rootsRef.current.has(id)) {
+                      // Reuse existing root
+                      root = rootsRef.current.get(id)!;
+                    } else {
+                      // Create new root and store it
+                      root = createRoot(contentContainer);
+                      rootsRef.current.set(id, root);
+                    }
+
+                    // Render to the root
                     root.render(
                       <Widget id={id} onRemove={() => removeWidget(id)} />
                     );
