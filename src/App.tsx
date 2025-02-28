@@ -2,25 +2,11 @@ import React, { useEffect, useRef } from "react";
 import { createRoot, Root } from "react-dom/client"; // For React 18+
 import { GridStack } from "gridstack";
 import "gridstack/dist/gridstack.min.css";
-
-// Updated Widget Component with remove button
-const Widget = ({ id, onRemove }: { id: number; onRemove: () => void }) => {
-  return (
-    <div className="grid-stack-item-content relative">
-      <button
-        onClick={(e) => {
-          e.stopPropagation(); // Prevent event bubbling
-          onRemove();
-        }}
-        className="absolute top-2 right-2 bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center hover:bg-red-600"
-      >
-        ×
-      </button>
-      <h3>Widget {id}</h3>
-      <p>Resizable & Draggable</p>
-    </div>
-  );
-};
+import Widget from "./components/Widget";
+import {
+  saveLayoutToLocalStorage,
+  loadLayoutFromLocalStorage,
+} from "./utils/storageUtils";
 
 const GridStackComponent: React.FC = () => {
   const gridRef = useRef<GridStack | null>(null);
@@ -43,60 +29,42 @@ const GridStackComponent: React.FC = () => {
         containerRef.current
       );
 
-      // Load saved layout if available
-      try {
-        const savedData = localStorage.getItem("grid-layout");
-        if (savedData && gridRef.current) {
-          const { layout, widgetIds } = JSON.parse(savedData);
+      const savedData = loadLayoutFromLocalStorage();
+      if (savedData && gridRef.current) {
+        const { layout, widgetIds } = savedData;
+        gridRef.current.load(layout);
 
-          // First load the grid structure
-          gridRef.current.load(layout);
-
-          // Then recreate the React components for each saved widget
-          setTimeout(() => {
-            if (gridRef.current) {
-              widgetIds.forEach((id: number) => {
-                const widgetElement = document.querySelector(
-                  `[gs-id="widget-${id}"]`
-                );
-                if (widgetElement) {
-                  // Store reference to widget element
-                  widgetsRef.current.set(id, widgetElement as HTMLElement);
-
-                  // Get content container
-                  const contentContainer = widgetElement.querySelector(
-                    ".grid-stack-item-content"
-                  );
-                  if (contentContainer) {
-                    // Clear existing content
-                    contentContainer.innerHTML = "";
-
-                    // Check if we already have a root for this container
-                    let root;
-                    if (rootsRef.current.has(id)) {
-                      // Reuse existing root
-                      root = rootsRef.current.get(id)!;
-                    } else {
-                      // Create new root and store it
-                      root = createRoot(contentContainer);
-                      rootsRef.current.set(id, root);
-                    }
-
-                    // Render to the root
-                    root.render(
-                      <Widget id={id} onRemove={() => removeWidget(id)} />
-                    );
-                  }
-                }
-              });
-            }
-          }, 0);
-        }
-      } catch (e) {
-        console.error("Error loading saved layout", e);
+        widgetIds.forEach((id: number) => {
+          initializeWidget(id);
+        });
       }
     }
   }, []);
+
+  const initializeWidget = (id: number) => {
+    const widgetElement = document.querySelector(`[gs-id="widget-${id}"]`);
+    if (widgetElement) {
+      widgetsRef.current.set(id, widgetElement as HTMLElement);
+      const contentContainer = widgetElement.querySelector(
+        ".grid-stack-item-content"
+      );
+      if (contentContainer) {
+        renderWidgetContent(id, contentContainer);
+      }
+    }
+  };
+
+  const renderWidgetContent = (id: number, container: Element) => {
+    container.innerHTML = "";
+    let root;
+    if (rootsRef.current.has(id)) {
+      root = rootsRef.current.get(id)!;
+    } else {
+      root = createRoot(container);
+      rootsRef.current.set(id, root);
+    }
+    root.render(<Widget id={id} onRemove={() => removeWidget(id)} />);
+  };
 
   // Function to remove a widget
   const removeWidget = (id: number) => {
@@ -145,12 +113,7 @@ const GridStackComponent: React.FC = () => {
       // Save widget IDs separately
       const widgetIds = Array.from(widgetsRef.current.keys());
 
-      const savedData = {
-        layout,
-        widgetIds,
-      };
-
-      localStorage.setItem("grid-layout", JSON.stringify(savedData));
+      saveLayoutToLocalStorage(layout, widgetIds);
       alert("Layout saved!");
     }
   };
