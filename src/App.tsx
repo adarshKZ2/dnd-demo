@@ -43,11 +43,42 @@ const GridStackComponent: React.FC = () => {
 
       // Load saved layout if available
       try {
-        const savedLayout = localStorage.getItem("grid-layout");
-        if (savedLayout && gridRef.current) {
-          const parsedObject = JSON.parse(savedLayout);
-          console.log(parsedObject);
-          gridRef.current.load(parsedObject);
+        const savedData = localStorage.getItem("grid-layout");
+        if (savedData && gridRef.current) {
+          const { layout, widgetIds } = JSON.parse(savedData);
+
+          // First load the grid structure
+          gridRef.current.load(layout);
+
+          // Then recreate the React components for each saved widget
+          setTimeout(() => {
+            if (gridRef.current) {
+              widgetIds.forEach((id: number) => {
+                const widgetElement = document.querySelector(
+                  `[gs-id="widget-${id}"]`
+                );
+                if (widgetElement) {
+                  // Store reference to widget element
+                  widgetsRef.current.set(id, widgetElement as HTMLElement);
+
+                  // Get content container
+                  const contentContainer = widgetElement.querySelector(
+                    ".grid-stack-item-content"
+                  );
+                  if (contentContainer) {
+                    // Clear existing content
+                    contentContainer.innerHTML = "";
+
+                    // Create React component
+                    const root = createRoot(contentContainer);
+                    root.render(
+                      <Widget id={id} onRemove={() => removeWidget(id)} />
+                    );
+                  }
+                }
+              });
+            }
+          }, 0);
         }
       } catch (e) {
         console.error("Error loading saved layout", e);
@@ -96,8 +127,18 @@ const GridStackComponent: React.FC = () => {
   // Function to save the current layout
   const saveLayout = () => {
     if (gridRef.current) {
-      const layout = gridRef.current.save();
-      localStorage.setItem("grid-layout", JSON.stringify(layout));
+      // Get the layout without content (which would include rendered HTML)
+      const layout = gridRef.current.save(false); // false = don't include content
+
+      // Save widget IDs separately
+      const widgetIds = Array.from(widgetsRef.current.keys());
+
+      const savedData = {
+        layout,
+        widgetIds,
+      };
+
+      localStorage.setItem("grid-layout", JSON.stringify(savedData));
       alert("Layout saved!");
     }
   };
