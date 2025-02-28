@@ -36,9 +36,22 @@ const GridStackComponent: React.FC = () => {
           column: 12,
           disableResize: false,
           alwaysShowResizeHandle: true,
+          margin: 10, // Add margin between items
         },
         containerRef.current
       );
+
+      // Load saved layout if available
+      try {
+        const savedLayout = localStorage.getItem("grid-layout");
+        if (savedLayout && gridRef.current) {
+          const parsedObject = JSON.parse(savedLayout);
+          console.log(parsedObject);
+          gridRef.current.load(parsedObject);
+        }
+      } catch (e) {
+        console.error("Error loading saved layout", e);
+      }
     }
   }, []);
 
@@ -53,29 +66,40 @@ const GridStackComponent: React.FC = () => {
 
   // Function to add a new React widget
   const addWidget = () => {
+    if (!gridRef.current) return;
+
     const newId = Date.now();
 
-    const newDiv = document.createElement("div");
-    newDiv.id = `widget-${newId}`;
-    newDiv.className = "grid-stack-item";
-    newDiv.setAttribute("gs-w", "4");
-    newDiv.setAttribute("gs-h", "4");
-
-    const innerDiv = document.createElement("div");
-    innerDiv.className = "grid-stack-item-content";
-    newDiv.appendChild(innerDiv);
-
-    containerRef.current!.appendChild(newDiv);
+    // Create the widget
+    const widget = gridRef.current.addWidget({
+      w: 3,
+      h: 3,
+      autoPosition: true,
+      id: `widget-${newId}`,
+    });
 
     // Store reference to widget element
-    widgetsRef.current.set(newId, newDiv);
+    widgetsRef.current.set(newId, widget);
 
-    // Pass remove handler to the widget
-    const root = createRoot(innerDiv);
-    root.render(<Widget id={newId} onRemove={() => removeWidget(newId)} />);
+    // Get the content container (need to target .grid-stack-item-content inside the widget)
+    const contentContainer = widget.querySelector(".grid-stack-item-content");
 
-    // Convert it into a GridStack widget (makes it draggable & resizable)
-    gridRef.current!.makeWidget(newDiv);
+    if (contentContainer) {
+      // Render React component into the content container
+      const root = createRoot(contentContainer);
+      root.render(<Widget id={newId} onRemove={() => removeWidget(newId)} />);
+    } else {
+      console.error("Content container not found in widget");
+    }
+  };
+
+  // Function to save the current layout
+  const saveLayout = () => {
+    if (gridRef.current) {
+      const layout = gridRef.current.save();
+      localStorage.setItem("grid-layout", JSON.stringify(layout));
+      alert("Layout saved!");
+    }
   };
 
   return (
@@ -85,6 +109,12 @@ const GridStackComponent: React.FC = () => {
         className="px-4 py-2 bg-blue-500 text-white rounded mb-4 hover:bg-blue-600"
       >
         Add Widget
+      </button>
+      <button
+        onClick={saveLayout}
+        className="px-4 py-2 bg-green-500 text-white rounded mb-4 hover:bg-green-600 ml-2"
+      >
+        Save Layout
       </button>
       <div
         ref={containerRef}
