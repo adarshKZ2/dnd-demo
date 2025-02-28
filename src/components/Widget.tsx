@@ -1,5 +1,3 @@
-import React from "react";
-
 const Widget = ({ id, onRemove }: { id: number; onRemove: () => void }) => {
   return (
     <div className="grid-stack-item-content relative">
