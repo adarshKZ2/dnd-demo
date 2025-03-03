@@ -1,7 +1,10 @@
-export const saveLayoutToLocalStorage = (layout: any, widgetIds: number[]) => {
+export const saveLayoutToLocalStorage = (
+  layout: any,
+  widgetInfo: { id: number; type: "chart" | "info" }[]
+) => {
   const savedData = {
     layout,
-    widgetIds,
+    widgetInfo,
   };
   localStorage.setItem("grid-layout", JSON.stringify(savedData));
 };

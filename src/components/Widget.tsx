@@ -9,6 +9,7 @@ const Widget = ({
     <div className="relative">
       <button
         onClick={(e) => {
+          console.log("onRemove clicked");
           e.stopPropagation(); // Prevent event bubbling
           onRemove();
         }}

@@ -3,15 +3,26 @@ import { createRoot, Root } from "react-dom/client";
 import { GridStack } from "gridstack";
 import "gridstack/dist/gridstack.min.css";
 import Widget from "./Widget";
+
+import ChartWidget from "../widgets/ChartWidget";
+import InfoCard from "../widgets/InfoCard";
+
 import {
   saveLayoutToLocalStorage,
   loadLayoutFromLocalStorage,
 } from "../utils/storageUtils";
 
+type widgetType = "chart" | "info";
+
+interface WidgetInfo {
+  type: widgetType;
+  element: HTMLElement;
+}
+
 const GridStackComponent: React.FC = () => {
   const gridRef = useRef<GridStack | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const widgetsRef = useRef<Map<number, HTMLElement>>(new Map());
+  const widgetsRef = useRef<Map<number, WidgetInfo>>(new Map());
   const rootsRef = useRef<Map<number, Root>>(new Map());
 
   useEffect(() => {
@@ -28,76 +39,92 @@ const GridStackComponent: React.FC = () => {
 
       const savedData = loadLayoutFromLocalStorage();
       if (savedData && gridRef.current) {
-        const { layout, widgetIds } = savedData;
+        const { layout, widgetInfo } = savedData;
         gridRef.current.load(layout);
 
-        widgetIds.forEach((id: number) => {
-          initializeWidget(id);
+        widgetInfo.forEach((info: { id: number; type: widgetType }) => {
+          initializeWidget(info.id, info.type);
         });
       }
     }
   }, []);
 
-  const initializeWidget = (id: number) => {
+  const initializeWidget = (id: number, type: widgetType) => {
     const widgetElement = document.querySelector(`[gs-id="widget-${id}"]`);
     if (widgetElement) {
-      widgetsRef.current.set(id, widgetElement as HTMLElement);
+      widgetsRef.current.set(id, {
+        type,
+        element: widgetElement as HTMLElement,
+      });
       const contentContainer = widgetElement.querySelector(
         ".grid-stack-item-content"
       );
       if (contentContainer) {
-        renderWidgetContent(id, contentContainer);
+        renderWidgetContent(id, contentContainer, type);
       }
     }
   };
 
-  const renderWidgetContent = (id: number, container: Element) => {
+  const renderWidgetContent = (
+    id: number,
+    container: Element,
+    type: widgetType
+  ) => {
     container.innerHTML = "";
     let root;
+    //check if the container is already react container or not
     if (rootsRef.current.has(id)) {
       root = rootsRef.current.get(id)!;
     } else {
       root = createRoot(container);
       rootsRef.current.set(id, root);
     }
-    root.render(<Widget id={id} onRemove={() => removeWidget(id)} />);
+
+    root.render(
+      <Widget onRemove={() => removeWidget(id)}>
+        {type === "chart" ? <ChartWidget /> : <InfoCard />}
+      </Widget>
+    );
   };
 
   const removeWidget = (id: number) => {
+    console.log("removeWidget", id);
+    console.log("gridRef.current", gridRef.current);
+    console.log("widgetsRef.current", widgetsRef.current.get(id));
     if (gridRef.current && widgetsRef.current.has(id)) {
-      const widget = widgetsRef.current.get(id)!;
-      gridRef.current.removeWidget(widget);
+      const widgetInfo = widgetsRef.current.get(id)!;
+      gridRef.current.removeWidget(widgetInfo.element);
       widgetsRef.current.delete(id);
     }
   };
 
-  const addWidget = () => {
+  const addWidget = (type: "chart" | "info") => {
     if (!gridRef.current) return;
 
     const newId = Date.now();
     const widget = gridRef.current.addWidget({
-      w: 3,
+      w: 4,
       h: 3,
       autoPosition: true,
       id: `widget-${newId}`,
     });
 
-    widgetsRef.current.set(newId, widget);
+    widgetsRef.current.set(newId, { type, element: widget });
     const contentContainer = widget.querySelector(".grid-stack-item-content");
 
-    if (contentContainer) {
-      const root = createRoot(contentContainer);
-      root.render(<Widget id={newId} onRemove={() => removeWidget(newId)} />);
-    } else {
-      console.error("Content container not found in widget");
-    }
+    renderWidgetContent(newId, contentContainer as Element, type);
   };
 
   const saveLayout = () => {
     if (gridRef.current) {
       const layout = gridRef.current.save(false);
-      const widgetIds = Array.from(widgetsRef.current.keys());
-      saveLayoutToLocalStorage(layout, widgetIds);
+      const arrayOfWidgetObjs = Array.from(widgetsRef.current.entries());
+      const widgetInfo = arrayOfWidgetObjs.map(([id, widgetInfo]) => ({
+        id,
+        type: widgetInfo.type,
+      }));
+      console.log("widgetInfo", widgetInfo);
+      saveLayoutToLocalStorage(layout, widgetInfo);
       alert("Layout saved!");
     }
   };
@@ -105,10 +132,16 @@ const GridStackComponent: React.FC = () => {
   return (
     <div>
       <button
-        onClick={addWidget}
+        onClick={() => addWidget("chart")}
         className="px-4 py-2 bg-blue-500 text-white rounded mb-4 hover:bg-blue-600"
       >
-        Add Widget
+        Add Chart Widget
+      </button>
+      <button
+        onClick={() => addWidget("info")}
+        className="px-4 py-2 bg-red-500 text-white rounded mb-4 hover:bg-blue-600"
+      >
+        Add Info Widget
       </button>
       <button
         onClick={saveLayout}
