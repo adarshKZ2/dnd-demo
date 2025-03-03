@@ -1,6 +1,12 @@
-const Widget = ({ id, onRemove }: { id: number; onRemove: () => void }) => {
+const Widget = ({
+  onRemove,
+  children,
+}: {
+  onRemove: () => void;
+  children: React.ReactNode;
+}) => {
   return (
-    <div className="grid-stack-item-content relative">
+    <div className="relative">
       <button
         onClick={(e) => {
           e.stopPropagation(); // Prevent event bubbling
@@ -10,8 +16,9 @@ const Widget = ({ id, onRemove }: { id: number; onRemove: () => void }) => {
       >
         ×
       </button>
-      <h3>Widget {id}</h3>
-      <p>Resizable & Draggable</p>
+      {/* <h3>Widget {id}</h3>
+        <p>Resizable & Draggable</p> */}
+      {children}
     </div>
   );
 };
