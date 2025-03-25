@@ -86,7 +86,7 @@ const GridStackComponent: React.FC = () => {
       </Widget>
     );
   };
-
+  // test
   const removeWidget = (id: number) => {
     console.log("removeWidget", id);
     console.log("gridRef.current", gridRef.current);
